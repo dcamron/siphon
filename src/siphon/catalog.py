@@ -11,7 +11,7 @@ from collections import OrderedDict
 from datetime import datetime
 import logging
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 import warnings
 import xml.etree.ElementTree as ET  # noqa:N814
 
@@ -567,19 +567,18 @@ class Dataset:
                 # for each SimpleService
                 if isinstance(service, CompoundService):
                     for subservice in service.services:
-                        server_base = urljoin(server_url, subservice.base)
-                        access_urls[subservice.service_type] = urljoin(server_base,
-                                                                       self.url_path)
+                        access_urls[subservice.service_type] = _construct_access_urls(
+                            server_url, subservice.base, self.url_path)
                 else:
-                    server_base = urljoin(server_url, service.base)
-                    access_urls[service.service_type] = urljoin(server_base, self.url_path)
+                    access_urls[service.service_type] = _construct_access_urls(
+                        server_url, service.base, self.url_path)
 
         # process access children of dataset elements
         for service_type in self.access_element_info:
             url_path = self.access_element_info[service_type]
             if service_type in all_service_dict:
-                server_base = urljoin(server_url, all_service_dict[service_type].base)
-                access_urls[service_type] = urljoin(server_base, url_path)
+                access_urls[service_type] = _construct_access_urls(
+                    server_url, all_service_dict[service_type].base, url_path)
 
         self.access_urls = access_urls
 
@@ -784,6 +783,16 @@ class SimpleService:
     def is_resolver(self):
         """Return whether the service is a resolver service."""
         return self.service_type == 'Resolver'
+
+def _construct_access_urls(url_base, service_base, service_path):
+    """test"""
+    split = urlsplit(url_base)
+    path = "/".join(
+        [group
+         for groups in (service_base, service_path)
+         for group in groups.split("/") if group != ""]
+    )
+    return urlunsplit(split._replace(path=path))
 
 
 class CompoundService:
